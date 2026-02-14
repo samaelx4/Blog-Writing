@@ -2,7 +2,7 @@ import React, { useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { Button, Input, RTE, Select } from "..";
 import appwriteService from "../../appwrite/config";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { useSelector } from "react-redux";
 
 export default function PostForm({ post }) {
@@ -35,16 +35,28 @@ export default function PostForm({ post }) {
                 navigate(`/post/${dbPost.$id}`);
             }
         } else {
-            const file = await appwriteService.uploadFile(data.image[0]);
+            if (!userData) return;
 
-            if (file) {
-                const fileId = file.$id;
-                data.featuredImage = fileId;
-                const dbPost = await appwriteService.createPost({ ...data, userId: userData.$id });
+            let fileId = null;
 
-                if (dbPost) {
-                    navigate(`/post/${dbPost.$id}`);
+            // Try uploading image, but don't stop if it fails
+            if (data.image?.[0]) {
+                try {
+                    const file = await appwriteService.uploadFile(data.image[0]);
+                    fileId = file?.$id || null;
+                } catch (error) {
+                    console.log("Image upload failed, continuing without image");
                 }
+            }
+
+            const dbPost = await appwriteService.createPost({
+                ...data,
+                featuredImage: fileId,
+                userId: userData.$id,
+            });
+
+            if (dbPost) {
+                navigate(`/post/${dbPost.$id}`);
             }
         }
     };
